@@ -1,0 +1,8 @@
+sequence:
+  name: chunked_motion_sequence
+  chunks:
+  - /root/smart_ws/motions/chunked_test/motion_20250827_205053_chunk_001.yaml
+  - /root/smart_ws/motions/chunked_test/motion_20250827_205053_chunk_002.yaml
+  - /root/smart_ws/motions/chunked_test/motion_20250827_205053_chunk_003.yaml
+  execution: sequential
+  delay_between_chunks_ms: 100

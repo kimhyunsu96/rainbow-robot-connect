@@ -1,0 +1,127 @@
+presets:
+  - name: "배선트레이(TCP)"
+    trigger_mode: "tcp_value"      # 새 모드
+    expected_interval_s: 10.0      # 표시/참고용(센서모드 아닐 때는 영향 없음)
+    wait_before_s: 0.9             # 값 수신 후 실행까지 대기(보정 가능)
+    motion_duration_s: 3.0         # 모션 예상 시간(완료 단계 전환용)
+    chunk_size: 0
+    chunk_delay_ms: 0
+    # 값→모션파일 매핑 (motions 디렉터리 기준 상대경로/파일명 사용)
+    value_map:
+      -2: "배선트레이-2.yaml"
+      -1: "배선트레이-1.yaml"
+      0: "배선트레이0.yaml"
+      1: "배선트레이1.yaml"
+      2: "배선트레이2.yaml"
+    # 'none' 값은 사이클 스킵 처리 (매핑 불필요)
+
+  # 기존 센서 기반 프리셋(예시: 유지 가능)
+  - name: "수평덕트"
+    motion_file: "수평덕트.yaml"
+    trigger_mode: "sensor"
+    expected_interval_s: 3.0
+    wait_before_s: 13.2
+    motion_duration_s: 1.5
+    chunk_size: 30
+    chunk_delay_ms: 100
+
+  - name: "배선트레이"
+    motion_file: "배선트레이.yaml"
+    trigger_mode: "sensor"
+    expected_interval_s: 10.0
+    wait_before_s: 1.7
+    motion_duration_s: 3.0
+    chunk_size: 30
+    chunk_delay_ms: 100
+
+  - name: "배선트레이5"
+    motion_file: "배선트레이5.yaml"
+    trigger_mode: "sensor"
+    expected_interval_s: 10.0
+    wait_before_s: 0.9
+    motion_duration_s: 3.0
+    chunk_size: 30
+    chunk_delay_ms: 100
+
+  - name: "배선트레이2.5"
+    motion_file: "배선트레이2.5.yaml"
+    trigger_mode: "sensor"
+    expected_interval_s: 10.0
+    wait_before_s: 0.9
+    motion_duration_s: 3.0
+    chunk_size: 30
+    chunk_delay_ms: 100
+
+  - name: "배선트레이0"
+    motion_file: "배선트레이0.yaml"
+    trigger_mode: "sensor"
+    expected_interval_s: 10.0
+    wait_before_s: 0.9
+    motion_duration_s: 3.0
+    chunk_size: 30
+    chunk_delay_ms: 100
+
+  - name: "배선트레이-2.5"
+    motion_file: "배선트레이-2.5.yaml"
+    trigger_mode: "sensor"
+    expected_interval_s: 10.0
+    wait_before_s: 0.9
+    motion_duration_s: 3.0
+    chunk_size: 30
+    chunk_delay_ms: 100
+
+  - name: "배선트레이-5"
+    motion_file: "배선트레이-5.yaml"
+    trigger_mode: "sensor"
+    expected_interval_s: 10.0
+    wait_before_s: 0.9
+    motion_duration_s: 3.0
+    chunk_size: 30
+    chunk_delay_ms: 100
+
+  - name: "하우징M"
+    motion_file: "하우징M.yaml"
+    trigger_mode: "sensor"
+    expected_interval_s: 10.0
+    wait_before_s: 5
+    motion_duration_s: 8.0
+    chunk_size: 30
+    chunk_delay_ms: 100
+
+  - name: "하우징1"
+    motion_file: "하우징1.yaml"
+    trigger_mode: "sensor"
+    expected_interval_s: 10
+    wait_before_s: 0.9
+    motion_duration_s: 5.0
+    chunk_size: 30
+    chunk_delay_ms: 100
+
+  - name: "하우징2"
+    motion_file: "하우징2.yaml"
+    trigger_mode: "sensor"
+    expected_interval_s: 10
+    wait_before_s: 0.9
+    motion_duration_s: 5
+    chunk_size: 30
+    chunk_delay_ms: 100
+
+  - name: "배선트레이1"
+    motion_file: "배선트레이1.yaml"
+    trigger_mode: "sensor"
+    expected_interval_s: 15.0
+    wait_before_s: 9
+    motion_duration_s: 7.0
+    chunk_size: 30
+    chunk_delay_ms: 100
+
+  - name: "배선트레이2"
+    motion_file: "배선트레이2.yaml"
+    trigger_mode: "sensor"
+    expected_interval_s: 15.0
+    wait_before_s: 13.2
+    motion_duration_s: 7.0
+    chunk_size: 30
+    chunk_delay_ms: 100
+
+

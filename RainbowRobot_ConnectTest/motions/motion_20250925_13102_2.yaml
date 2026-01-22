@@ -1,0 +1,880 @@
+motions:
+- name: motion_20250925_13102_1
+  motion_type: joint_path
+  execution_mode: j_add
+  coordinate_frame: robot_base_frame
+  parameters:
+    joint_speed_deg_s: 20
+    joint_accel_deg_s2: 40
+    blend_option: RADIUS
+    blend_type: INTENDED
+  waypoints:
+  - id: 0
+    type: joint
+    joints:
+    - -4.67
+    - -45.18
+    - 108.47
+    - 25.79
+    - -83.68
+    - -11.01
+    speed: 40
+    blend_radius: 10
+  - id: 1
+    type: joint
+    joints:
+    - -4.55
+    - -44.73
+    - 108.42
+    - 25.64
+    - -83.51
+    - -10.89
+    speed: 40
+    blend_radius: 10
+  - id: 2
+    type: joint
+    joints:
+    - -4.35
+    - -43.89
+    - 108.17
+    - 25.38
+    - -83.56
+    - -10.54
+    speed: 40
+    blend_radius: 10
+  - id: 3
+    type: joint
+    joints:
+    - -4.37
+    - -42.11
+    - 107.53
+    - 24.36
+    - -83.37
+    - -10.38
+    speed: 40
+    blend_radius: 10
+  - id: 4
+    type: joint
+    joints:
+    - -5.24
+    - -38.86
+    - 106.19
+    - 22.37
+    - -82.47
+    - -11.29
+    speed: 40
+    blend_radius: 10
+  - id: 5
+    type: joint
+    joints:
+    - -6.6
+    - -34.75
+    - 104.07
+    - 20.67
+    - -82.07
+    - -12.64
+    speed: 40
+    blend_radius: 10
+  - id: 6
+    type: joint
+    joints:
+    - -1.78
+    - -41.61
+    - 102.27
+    - 31.15
+    - -87.99
+    - -2.59
+    speed: 40
+    blend_radius: 10
+  - id: 7
+    type: joint
+    joints:
+    - -3.79
+    - -37.42
+    - 99.21
+    - 29.03
+    - -86.78
+    - -5.97
+    speed: 40
+    blend_radius: 10
+  - id: 8
+    type: joint
+    joints:
+    - -10.8
+    - -24.21
+    - 94.89
+    - 20.02
+    - -81.4
+    - -17.8
+    speed: 40
+    blend_radius: 10
+  - id: 9
+    type: joint
+    joints:
+    - -10.94
+    - -22.98
+    - 93.16
+    - 19.93
+    - -81.36
+    - -17.89
+    speed: 40
+    blend_radius: 10
+  - id: 10
+    type: joint
+    joints:
+    - -14.02
+    - -15.5
+    - 89.16
+    - 16.09
+    - -78.97
+    - -22.68
+    speed: 40
+    blend_radius: 10
+  - id: 11
+    type: joint
+    joints:
+    - -7.5
+    - -28.66
+    - 92.71
+    - 25.8
+    - -84.1
+    - -12.3
+    speed: 40
+    blend_radius: 10
+  - id: 12
+    type: joint
+    joints:
+    - -10.41
+    - -21.69
+    - 87.39
+    - 24.11
+    - -81.72
+    - -18.36
+    speed: 40
+    blend_radius: 10
+  - id: 13
+    type: joint
+    joints:
+    - -6.4
+    - -30.29
+    - 91.29
+    - 28.89
+    - -85.03
+    - -11.73
+    speed: 40
+    blend_radius: 10
+  - id: 14
+    type: joint
+    joints:
+    - -6.95
+    - -28.17
+    - 89.22
+    - 29.62
+    - -85.09
+    - -14.2
+    speed: 40
+    blend_radius: 10
+  - id: 15
+    type: joint
+    joints:
+    - -14.36
+    - -8.95
+    - 76.85
+    - 24.45
+    - -80.31
+    - -31.2
+    speed: 40
+    blend_radius: 10
+  - id: 16
+    type: joint
+    joints:
+    - -11.35
+    - -15.54
+    - 80.84
+    - 26.83
+    - -82.54
+    - -25.47
+    speed: 40
+    blend_radius: 10
+  - id: 17
+    type: joint
+    joints:
+    - -15.26
+    - -3.65
+    - 72.95
+    - 24.07
+    - -80.19
+    - -35.28
+    speed: 40
+    blend_radius: 10
+  - id: 18
+    type: joint
+    joints:
+    - -16.64
+    - 0.93
+    - 69.93
+    - 23.67
+    - -79.73
+    - -38.74
+    speed: 40
+    blend_radius: 10
+  - id: 19
+    type: joint
+    joints:
+    - -17.11
+    - 2.5
+    - 68.95
+    - 23.8
+    - -79.54
+    - -39.9
+    speed: 40
+    blend_radius: 10
+  - id: 20
+    type: joint
+    joints:
+    - -17.13
+    - 3.02
+    - 68.58
+    - 24.16
+    - -79.61
+    - -40.3
+    speed: 40
+    blend_radius: 10
+  - id: 21
+    type: joint
+    joints:
+    - -17.08
+    - 3.24
+    - 68.43
+    - 24.56
+    - -79.68
+    - -40.76
+    speed: 40
+    blend_radius: 10
+  - id: 22
+    type: joint
+    joints:
+    - -16.93
+    - 3.24
+    - 68.45
+    - 24.79
+    - -79.74
+    - -40.98
+    speed: 40
+    blend_radius: 10
+  - id: 23
+    type: joint
+    joints:
+    - -16.7
+    - 3.05
+    - 68.7
+    - 24.86
+    - -80.08
+    - -40.86
+    speed: 40
+    blend_radius: 10
+  - id: 24
+    type: joint
+    joints:
+    - -16.5
+    - 2.74
+    - 69.33
+    - 24.75
+    - -80.14
+    - -40.65
+    speed: 40
+    blend_radius: 10
+  - id: 25
+    type: joint
+    joints:
+    - -16.39
+    - 2.67
+    - 69.94
+    - 24.51
+    - -80.11
+    - -40.66
+    speed: 40
+    blend_radius: 10
+  - id: 26
+    type: joint
+    joints:
+    - -16.1
+    - 1.96
+    - 71.76
+    - 23.87
+    - -80.29
+    - -40.15
+    speed: 40
+    blend_radius: 10
+  - id: 27
+    type: joint
+    joints:
+    - -15.7
+    - 1.16
+    - 74.01
+    - 22.74
+    - -80.89
+    - -39.54
+    speed: 40
+    blend_radius: 10
+  - id: 28
+    type: joint
+    joints:
+    - -15.17
+    - 0.44
+    - 76.08
+    - 21.47
+    - -82.01
+    - -38.75
+    speed: 40
+    blend_radius: 10
+  - id: 29
+    type: joint
+    joints:
+    - -14.73
+    - -0.03
+    - 77.68
+    - 20.41
+    - -82.67
+    - -38.17
+    speed: 40
+    blend_radius: 10
+  - id: 30
+    type: joint
+    joints:
+    - -14.36
+    - -0.54
+    - 79.39
+    - 19.19
+    - -82.83
+    - -38.01
+    speed: 40
+    blend_radius: 10
+  - id: 31
+    type: joint
+    joints:
+    - -14.03
+    - -1.32
+    - 81.54
+    - 17.66
+    - -82.97
+    - -37.88
+    speed: 40
+    blend_radius: 10
+  - id: 32
+    type: joint
+    joints:
+    - -13.64
+    - -2.29
+    - 84.08
+    - 16.14
+    - -83
+    - -37.52
+    speed: 40
+    blend_radius: 10
+  - id: 33
+    type: joint
+    joints:
+    - -13.19
+    - -3.36
+    - 86.89
+    - 14.94
+    - -83.6
+    - -37.03
+    speed: 40
+    blend_radius: 10
+  - id: 34
+    type: joint
+    joints:
+    - -12.81
+    - -4.23
+    - 89.36
+    - 14.12
+    - -83.79
+    - -36.96
+    speed: 40
+    blend_radius: 10
+  - id: 35
+    type: joint
+    joints:
+    - -12.53
+    - -5.15
+    - 91.7
+    - 13.19
+    - -84.15
+    - -37.14
+    speed: 40
+    blend_radius: 10
+  - id: 36
+    type: joint
+    joints:
+    - -11.92
+    - -5.98
+    - 94.3
+    - 11.78
+    - -84.93
+    - -36.66
+    speed: 40
+    blend_radius: 10
+  - id: 37
+    type: joint
+    joints:
+    - -11.06
+    - -6.39
+    - 96.62
+    - 10.27
+    - -84.88
+    - -36.21
+    speed: 40
+    blend_radius: 10
+  - id: 38
+    type: joint
+    joints:
+    - -10.23
+    - -6.67
+    - 98.81
+    - 8.55
+    - -84.34
+    - -35.92
+    speed: 40
+    blend_radius: 10
+  - id: 39
+    type: joint
+    joints:
+    - -9.58
+    - -6.98
+    - 100.7
+    - 7.23
+    - -84.03
+    - -35.42
+    speed: 40
+    blend_radius: 10
+  - id: 40
+    type: joint
+    joints:
+    - -9.04
+    - -7.36
+    - 102.6
+    - 5.96
+    - -83.81
+    - -34.89
+    speed: 40
+    blend_radius: 10
+  - id: 41
+    type: joint
+    joints:
+    - -8.92
+    - -7.61
+    - 104.29
+    - 4.73
+    - -83.58
+    - -34.98
+    speed: 40
+    blend_radius: 10
+  - id: 42
+    type: joint
+    joints:
+    - -9
+    - -7.75
+    - 105.98
+    - 3.2
+    - -83.53
+    - -35.46
+    speed: 40
+    blend_radius: 10
+  - id: 43
+    type: joint
+    joints:
+    - -9.26
+    - -7.7
+    - 107.45
+    - 1.5
+    - -83.22
+    - -36.3
+    speed: 40
+    blend_radius: 10
+  - id: 44
+    type: joint
+    joints:
+    - -9.31
+    - -7.55
+    - 108.8
+    - 0.09
+    - -82.84
+    - -36.69
+    speed: 40
+    blend_radius: 10
+  - id: 45
+    type: joint
+    joints:
+    - -8.83
+    - -7.43
+    - 110.38
+    - -1.37
+    - -82.6
+    - -36.25
+    speed: 40
+    blend_radius: 10
+  - id: 46
+    type: joint
+    joints:
+    - -8.17
+    - -7.53
+    - 112.25
+    - -2.87
+    - -82.31
+    - -35.79
+    speed: 40
+    blend_radius: 10
+  - id: 47
+    type: joint
+    joints:
+    - -7.61
+    - -7.84
+    - 114.38
+    - -4.53
+    - -81.89
+    - -35.75
+    speed: 40
+    blend_radius: 10
+  - id: 48
+    type: joint
+    joints:
+    - -6.93
+    - -8.13
+    - 116.8
+    - -6.63
+    - -81.88
+    - -35.43
+    speed: 40
+    blend_radius: 10
+  - id: 49
+    type: joint
+    joints:
+    - -6.26
+    - -8.04
+    - 119.2
+    - -9.17
+    - -81.66
+    - -34.79
+    speed: 40
+    blend_radius: 10
+  - id: 50
+    type: joint
+    joints:
+    - -5.71
+    - -7.99
+    - 121.21
+    - -11.2
+    - -81.31
+    - -34.37
+    speed: 40
+    blend_radius: 10
+  - id: 51
+    type: joint
+    joints:
+    - -5.21
+    - -8
+    - 123.26
+    - -13.59
+    - -81.05
+    - -33.64
+    speed: 40
+    blend_radius: 10
+  - id: 52
+    type: joint
+    joints:
+    - -4.93
+    - -7.89
+    - 125.65
+    - -15.73
+    - -80.77
+    - -32.75
+    speed: 40
+    blend_radius: 10
+  - id: 53
+    type: joint
+    joints:
+    - -5.21
+    - -7.85
+    - 127.23
+    - -16.27
+    - -80.23
+    - -32.01
+    speed: 40
+    blend_radius: 10
+  - id: 54
+    type: joint
+    joints:
+    - -5.81
+    - -8.44
+    - 128.17
+    - -16.18
+    - -80.05
+    - -30.89
+    speed: 40
+    blend_radius: 10
+  - id: 55
+    type: joint
+    joints:
+    - -6.26
+    - -9.69
+    - 129.09
+    - -15.93
+    - -81.31
+    - -27.95
+    speed: 40
+    blend_radius: 10
+  - id: 56
+    type: joint
+    joints:
+    - -6.04
+    - -11.4
+    - 129.93
+    - -15.65
+    - -83.1
+    - -24.6
+    speed: 40
+    blend_radius: 10
+  - id: 57
+    type: joint
+    joints:
+    - -5.41
+    - -13.12
+    - 130.42
+    - -15.44
+    - -83.63
+    - -22.59
+    speed: 40
+    blend_radius: 10
+  - id: 58
+    type: joint
+    joints:
+    - -4.91
+    - -14.66
+    - 130.18
+    - -14.19
+    - -83.14
+    - -21.18
+    speed: 40
+    blend_radius: 10
+  - id: 59
+    type: joint
+    joints:
+    - -4.19
+    - -17.44
+    - 129.51
+    - -10.3
+    - -82.99
+    - -19.73
+    speed: 40
+    blend_radius: 10
+  - id: 60
+    type: joint
+    joints:
+    - -2.68
+    - -22.53
+    - 129.04
+    - -4.18
+    - -83.35
+    - -17.05
+    speed: 40
+    blend_radius: 10
+  - id: 61
+    type: joint
+    joints:
+    - -0.5
+    - -29.93
+    - 129.22
+    - 3.91
+    - -83.06
+    - -13.89
+    speed: 40
+    blend_radius: 10
+  - id: 62
+    type: joint
+    joints:
+    - 3.01
+    - -38.45
+    - 129.01
+    - 13.35
+    - -81.81
+    - -10.33
+    speed: 40
+    blend_radius: 10
+  - id: 63
+    type: joint
+    joints:
+    - 7.76
+    - -46.31
+    - 127.72
+    - 22.39
+    - -80.69
+    - -5.79
+    speed: 40
+    blend_radius: 10
+  - id: 64
+    type: joint
+    joints:
+    - 11.26
+    - -51.25
+    - 126.5
+    - 27.48
+    - -80.06
+    - -2.1
+    speed: 40
+    blend_radius: 10
+  - id: 65
+    type: joint
+    joints:
+    - 12.36
+    - -53.48
+    - 125.89
+    - 28.91
+    - -80.13
+    - -0.66
+    speed: 40
+    blend_radius: 10
+  - id: 66
+    type: joint
+    joints:
+    - 12.49
+    - -54.25
+    - 125.54
+    - 29.06
+    - -80.26
+    - -0.73
+    speed: 40
+    blend_radius: 10
+  - id: 67
+    type: joint
+    joints:
+    - 12.57
+    - -53.98
+    - 123.79
+    - 29.78
+    - -80.15
+    - -2.13
+    speed: 40
+    blend_radius: 10
+  - id: 68
+    type: joint
+    joints:
+    - 12.61
+    - -53.07
+    - 120.46
+    - 31.72
+    - -80.03
+    - -4.09
+    speed: 40
+    blend_radius: 10
+  - id: 69
+    type: joint
+    joints:
+    - 13.01
+    - -52
+    - 116.53
+    - 34.29
+    - -80.53
+    - -4.84
+    speed: 40
+    blend_radius: 10
+  - id: 70
+    type: joint
+    joints:
+    - 13.5
+    - -51.13
+    - 112.79
+    - 36.52
+    - -80.83
+    - -5.67
+    speed: 40
+    blend_radius: 10
+  - id: 71
+    type: joint
+    joints:
+    - 14.14
+    - -50.73
+    - 110.19
+    - 38.29
+    - -81.31
+    - -6.03
+    speed: 40
+    blend_radius: 10
+  - id: 72
+    type: joint
+    joints:
+    - 15.01
+    - -50.38
+    - 106.95
+    - 41.17
+    - -81.77
+    - -7.02
+    speed: 40
+    blend_radius: 10
+  - id: 73
+    type: joint
+    joints:
+    - 15.95
+    - -49.19
+    - 102.31
+    - 44.63
+    - -82.69
+    - -8.94
+    speed: 40
+    blend_radius: 10
+  - id: 74
+    type: joint
+    joints:
+    - 15.11
+    - -47.39
+    - 98.17
+    - 46.79
+    - -84.16
+    - -10.58
+    speed: 40
+    blend_radius: 10
+  - id: 75
+    type: joint
+    joints:
+    - 9.41
+    - -45.89
+    - 97.49
+    - 43.84
+    - -86.7
+    - -11.05
+    speed: 40
+    blend_radius: 10
+  - id: 76
+    type: joint
+    joints:
+    - 3.94
+    - -45.09
+    - 99.26
+    - 39.75
+    - -88.53
+    - -13.62
+    speed: 40
+    blend_radius: 10
+  - id: 77
+    type: joint
+    joints:
+    - 3.47
+    - -45.09
+    - 98.86
+    - 40.67
+    - -87.27
+    - -14.42
+    speed: 40
+    blend_radius: 10
+  - id: 78
+    type: joint
+    joints:
+    - 3.52
+    - -45.37
+    - 97.8
+    - 42.32
+    - -86.37
+    - -15.52
+    speed: 40
+    blend_radius: 10

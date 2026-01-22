@@ -1,0 +1,16 @@
+motions:
+  - name: joint_from_pendant
+    motion_type: joint_path
+    execution_mode: j_add
+    parameters:
+      joint_speed_deg_s: 20.0
+      joint_accel_deg_s2: 40.0
+      blend_option: RADIUS
+      blend_type: INTENDED
+    waypoints:
+      - id: 0
+        type: joint
+        joints: [0.0, -45.00, 110.00, 45.00, 90.00, 0.0]
+        speed: 20.0
+        blend_radius: 10.0
+

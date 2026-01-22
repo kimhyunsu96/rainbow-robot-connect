@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rainbow Robot 웹 제어기</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>🤖 Rainbow Robot 웹 제어기</h1>
+            <p>모션 파일 관리 및 로봇 제어 시스템</p>
+        </header>
+
+        <main>
+            <!-- 상태 표시 -->
+            <section class="panel">
+                <h2>📊 시스템 상태</h2>
+                <div class="status-box">
+                    <div class="status-item">
+                        <span class="label">상태:</span>
+                        <span id="status-text" class="value">로딩 중...</span>
+                    </div>
+                    <div class="status-item">
+                        <span class="label">실행 중:</span>
+                        <span id="busy-text" class="value">아니오</span>
+                    </div>
+                    <div class="status-item">
+                        <span class="label">선택 파일:</span>
+                        <span id="selected-file" class="value">없음</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 파일 관리 -->
+            <section class="panel">
+                <h2>📁 모션 파일 선택</h2>
+                <div>
+                    <button id="refresh-files-btn" class="btn btn-primary">🔄 파일 목록 새로고침</button>
+                    <div id="motions-list" class="file-list">
+                        <p>파일을 로드하는 중...</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Home 제어 -->
+            <section class="panel">
+                <h2>🏠 Home 이동</h2>
+                <div class="control-section">
+                    <div class="param-group">
+                        <label>Home 위치 (Joints):</label>
+                        <div id="home-pose-display" class="pose-display">
+                            [로딩 중...]
+                        </div>
+                        <div class="input-group">
+                            <input type="text" id="home-pose-input" placeholder="[j0, j1, j2, j3, j4, j5]" class="input-large">
+                            <button id="set-home-pose-btn" class="btn btn-secondary">설정</button>
+                        </div>
+                    </div>
+
+                    <div class="param-group">
+                        <label>이동 속도 (deg/s):</label>
+                        <input type="number" id="home-speed" placeholder="20.0" step="0.1" value="20.0" class="input-small">
+                    </div>
+
+                    <div class="param-group">
+                        <label>가속도 (deg/s²):</label>
+                        <input type="number" id="home-accel" placeholder="20.0" step="0.1" value="20.0" class="input-small">
+                    </div>
+
+                    <button id="run-home-btn" class="btn btn-success btn-large">🚀 Home으로 이동</button>
+                </div>
+            </section>
+
+            <!-- ServoJ 파라미터 -->
+            <section class="panel">
+                <h2>⚙️ ServoJ 파라미터</h2>
+                <div class="control-section">
+                    <div class="params-grid">
+                        <div class="param-group">
+                            <label>t1 (Time constant 1):</label>
+                            <input type="number" id="servo-t1" step="0.001" value="0.05" class="input-param">
+                        </div>
+                        <div class="param-group">
+                            <label>t2 (Time constant 2):</label>
+                            <input type="number" id="servo-t2" step="0.001" value="0.05" class="input-param">
+                        </div>
+                        <div class="param-group">
+                            <label>Gain (제어 이득):</label>
+                            <input type="number" id="servo-gain" step="0.001" value="0.1" class="input-param">
+                        </div>
+                        <div class="param-group">
+                            <label>Alpha (필터계수):</label>
+                            <input type="number" id="servo-alpha" step="0.001" value="0.03" class="input-param">
+                        </div>
+                    </div>
+                    <button id="update-servo-btn" class="btn btn-secondary">📝 ServoJ 파라미터 업데이트</button>
+                    <div id="servo-current" class="info-box">
+                        <strong>현재 값:</strong>
+                        <pre id="servo-display">{}</pre>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 모션 실행 -->
+            <section class="panel">
+                <h2>▶️ 모션 실행</h2>
+                <div class="control-section">
+                    <div class="info-box">
+                        <strong>선택된 모션:</strong>
+                        <p id="motion-selected-display">없음</p>
+                    </div>
+                    <button id="run-motion-btn" class="btn btn-success btn-large">▶️ 모션 실행</button>
+                </div>
+            </section>
+
+            <!-- 로그 -->
+            <section class="panel">
+                <h2>📋 로그</h2>
+                <div id="log-container" class="log-box">
+                    <p>[시스템 로그]</p>
+                </div>
+            </section>
+        </main>
+
+        <footer>
+            <p>Rainbow Robot Web Controller v1.0 | ROS2 + Flask</p>
+        </footer>
+    </div>
+
+    <script src="/static/script.js"></script>
+</body>
+</html>
