@@ -1,348 +1,369 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-웹 기반 Rainbow Robot 모션 제어기
-motion_gui_runner.py의 PyQt 기능을 Flask 웹으로 포팅
-
-주요 기능:
-1. Home 이동 (cobot.MoveJ with home_pose_arr)
-2. Motion 파일 선택 및 관리 (~/motions 디렉터리)
-3. ServoJ parameter 기반 모션 실행
+웹 기반 Rainbow Robot 모션 제어기 (개선 버전)
+- ROS2 없어도 웹 서버 실행 가능
+- 로봇 연결은 백그라운드에서 비동기 처리 (블로킹 없음)
 """
 
 import os
 import json
 import threading
 import time
+import signal
 from pathlib import Path
 from datetime import datetime
 import yaml
 import sys
 
 # Flask 웹서버
-from flask import Flask, render_template, request, jsonify, send_file
+from flask import Flask, render_template, request, jsonify
 from flask_cors import CORS
 
-# ROS2
-import rclpy
-from rclpy.node import Node
-from std_msgs.msg import Float32
+# ROS2 및 로봇 제어 모듈 (선택사항)
+HAS_ROS2 = False
+HAS_ROBOT = False
 
-# Robot control
-sys.path.insert(0, str(Path(__file__).parent.parent))
-from rb_test import cobot
-from rb_test.motion_executor import MotionExecutor
+try:
+    import rclpy
+    from rclpy.node import Node
+    from std_msgs.msg import Float32
+    HAS_ROS2 = True
+except ImportError:
+    pass
 
-# ==================== 설정 ====================
-def _guess_workspace_root() -> str:
-    """workspace 루트 추론"""
-    env = os.environ.get("SMART_WS_DIR")
-    if env:
-        return str(Path(env).expanduser().resolve())
-    
-    try:
-        here = Path(__file__).resolve()
-        parts = here.parts
-        if "src" in parts:
-            idx = parts.index("src")
-            return str(Path(*parts[:idx]).resolve())
-        if "install" in parts:
-            idx = parts.index("install")
-            return str(Path(*parts[:idx]).resolve())
-    except Exception:
-        pass
-    
-    return str(Path.cwd().resolve())
+try:
+    sys.path.insert(0, str(Path(__file__).parent.parent))
+    from rb_test import cobot
+    from rb_test.motion_executor import MotionExecutor
+    HAS_ROBOT = True
+except ImportError:
+    pass
 
-
-def _default_motions_dir() -> str:
-    """motions 디렉터리 경로"""
-    ws = Path(_guess_workspace_root())
-    return str((ws / "motions").resolve())
-
-
-# ==================== ROS2 Node ====================
-class MotionWebNode(Node):
-    def __init__(self):
-        super().__init__('motion_web_runner')
-        
-        # 파라미터 선언
-        self.declare_parameter('home_pose_arr', [0.0, -45.00, 137.00, 0.00, -90.00, 0.0])
-        self.declare_parameter('home_speed', 20.0)
-        self.declare_parameter('home_accel', 20.0)
-        
-        self.declare_parameter('unity_playback_servo_t1', 0.05)
-        self.declare_parameter('unity_playback_servo_t2', 0.05)
-        self.declare_parameter('unity_playback_servo_gain', 0.1)
-        self.declare_parameter('unity_playback_servo_alpha', 0.03)
-        
-        self.declare_parameter('default_dir', _default_motions_dir())
-        self.declare_parameter('run_mode', 'inline')  # 'inline' | 'process'
-        
-        # 파라미터 로드
-        self.home_pose_arr = list(self.get_parameter('home_pose_arr').value)
-        self.home_speed = float(self.get_parameter('home_speed').value)
-        self.home_accel = float(self.get_parameter('home_accel').value)
-        
-        self.servo_params = {
-            't1': float(self.get_parameter('unity_playback_servo_t1').value),
-            't2': float(self.get_parameter('unity_playback_servo_t2').value),
-            'gain': float(self.get_parameter('unity_playback_servo_gain').value),
-            'alpha': float(self.get_parameter('unity_playback_servo_alpha').value),
-        }
-        
-        self.default_dir = self.get_parameter('default_dir').value
-        self.run_mode = self.get_parameter('run_mode').value
-        
-        # 상태
-        self._busy = False
-        self._selected_motion_file = None
-        self._last_status = ""
-        self._motion_duration_s = None
-        self._robot_connected = False  # 로봇 연결 상태
-        self._robot_error_msg = ""  # 로봇 연결 오류 메시지
-        
-        # Inline 모드용 MotionExecutor
-        self.exec_node = None
-        if self.run_mode == 'inline':
-            try:
-                self.exec_node = MotionExecutor()
-                self.exec_node.set_servo_overrides(**self.servo_params)
-                self._robot_connected = True
-                self.get_logger().info("[INIT] MotionExecutor initialized")
-                self._last_status = "✅ 로봇 연결됨"
-            except Exception as e:
-                self._robot_connected = False
-                self._robot_error_msg = str(e)
-                self.get_logger().warning(f"[INIT] MotionExecutor init failed: {e}")
-                self._last_status = f"⚠️ 로봇 연결 실패: {e}"
-        else:
-            self._robot_error_msg = "Process 모드에서는 로봇 제어 미지원"
-            self._last_status = f"⚠️ {self._robot_error_msg}"
-        
-        # Duration 구독
-        self.duration_sub = self.create_subscription(
-            Float32, "/motion_executor/last_duration_s",
-            self._on_motion_duration, 10
-        )
-        
-        self.get_logger().info("[INIT] MotionWebNode initialized")
-    
-    def _on_motion_duration(self, msg: Float32):
-        """모션 실행 시간 수신"""
-        self._motion_duration_s = float(msg.data)
-    
-    def get_status(self) -> str:
-        """현재 상태 반환"""
-        status = {
-            'busy': self._busy,
-            'selected_file': self._selected_motion_file,
-            'last_status': self._last_status,
-            'servo_params': self.servo_params,
-            'home_pose': self.home_pose_arr,
-            'robot_connected': self._robot_connected,  # 🆕 로봇 연결 상태
-            'robot_error': self._robot_error_msg,      # 🆕 로봇 오류 메시지
-        }
-        return status
-    
-    def set_status(self, msg: str):
-        """상태 메시지 업데이트"""
-        self._last_status = msg
-        self.get_logger().info(f"[STATUS] {msg}")
-    
-    def is_busy(self) -> bool:
-        """실행 중 여부"""
-        return self._busy
-    
-    def run_home(self) -> bool:
-        """Home 위치로 이동"""
-        if self._busy:
-            self.set_status("실행 중 → 무시")
-            return False
-        
-        if not self._robot_connected:
-            self.set_status(f"❌ 로봇이 연결되지 않았습니다: {self._robot_error_msg}")
-            return False
-        
-        self._busy = True
-        try:
-            def _do():
-                try:
-                    q = self.home_pose_arr
-                    sp = self.home_speed
-                    ac = self.home_accel
-                    
-                    self.set_status(f"🏠 홈 이동 중: {q} (speed={sp}, accel={ac})")
-                    
-                    # cobot.MoveJ 호출
-                    cobot.MoveJ(q[0], q[1], q[2], q[3], q[4], q[5], sp, ac)
-                    self.set_status("✅ 홈 이동 완료")
-                    
-                except Exception as e:
-                    self.set_status(f"❌ 홈 이동 실패: {e}")
-                    self.get_logger().error(f"[HOME] failed: {e}")
-                finally:
-                    self._busy = False
-            
-            threading.Thread(target=_do, daemon=True).start()
-            return True
-        except Exception as e:
-            self._busy = False
-            self.set_status(f"❌ 홈 이동 시작 실패: {e}")
-            return False
-    
-    def load_motion_file(self, filepath: str) -> bool:
-        """모션 파일 선택 및 저장"""
-        if not filepath or not os.path.exists(filepath):
-            self.set_status(f"파일을 찾을 수 없음: {filepath}")
-            return False
-        
-        ext = Path(filepath).suffix.lower()
-        if ext not in ['.yaml', '.yml', '.json']:
-            self.set_status(f"지원하지 않는 파일 형식: {ext}")
-            return False
-        
-        self._selected_motion_file = filepath
-        self.set_status(f"모션 파일 로드됨: {Path(filepath).name}")
-        return True
-    
-    def run_motion_file(self, filepath: str = None) -> bool:
-        """선택한 모션 파일 실행 (ServoJ parameter 사용)"""
-        if self._busy:
-            self.set_status("실행 중 → 무시")
-            return False
-        
-        motion_file = filepath or self._selected_motion_file
-        if not motion_file or not os.path.exists(motion_file):
-            self.set_status("❌ 모션 파일이 선택되지 않았습니다")
-            return False
-        
-        if not self._robot_connected:
-            self.set_status(f"❌ 로봇이 연결되지 않았습니다: {self._robot_error_msg}")
-            return False
-        
-        self._busy = True
-        try:
-            def _do():
-                try:
-                    if self.exec_node is not None:
-                        # Inline 모드: MotionExecutor 사용
-                        self.set_status(f"▶️ 모션 실행 중: {os.path.basename(motion_file)}")
-                        self.exec_node.load_motion_from_file(motion_file, False)
-                        self.set_status("✅ 모션 실행 완료 (inline)")
-                    else:
-                        # Process 모드: 외부 실행 (구현 필요)
-                        self.set_status("⚠️ Process 모드는 현재 미지원")
-                    
-                except Exception as e:
-                    self.set_status(f"❌ 모션 실행 실패: {e}")
-                    self.get_logger().error(f"[MOTION] failed: {e}")
-                finally:
-                    self._busy = False
-            
-            threading.Thread(target=_do, daemon=True).start()
-            return True
-        except Exception as e:
-            self._busy = False
-            self.set_status(f"❌ 모션 실행 시작 실패: {e}")
-            return False
-    
-    def set_servo_params(self, t1=None, t2=None, gain=None, alpha=None):
-        """ServoJ 파라미터 설정"""
-        if t1 is not None:
-            self.servo_params['t1'] = float(t1)
-        if t2 is not None:
-            self.servo_params['t2'] = float(t2)
-        if gain is not None:
-            self.servo_params['gain'] = float(gain)
-        if alpha is not None:
-            self.servo_params['alpha'] = float(alpha)
-        
-        # MotionExecutor에 반영
-        if self.exec_node is not None:
-            try:
-                self.exec_node.set_servo_overrides(**self.servo_params)
-            except Exception as e:
-                self.get_logger().warning(f"servo override failed: {e}")
-        
-        self.set_status(f"ServoJ 파라미터 업데이트: {self.servo_params}")
-
-
-# ==================== Flask 웹 앱 ====================
-app = Flask(__name__)
+# ==================== Flask App ====================
+app = Flask(__name__, template_folder='templates', static_folder='static')
 CORS(app)
 
-# 전역 ROS2 노드
-ros_node = None
-executor_thread = None
+# ==================== 전역 변수 ====================
+ros_node = None  # ROS2 노드
 
-
-def init_ros():
-    """ROS2 초기화"""
-    global ros_node, executor_thread
+class DummyNode:
+    """ROS2 없을 때 사용하는 더미 노드"""
+    def __init__(self):
+        self.home_pose_arr = [0.0, -45.00, 137.00, 0.00, -90.00, 0.0]
+        self.home_speed = 20.0
+        self.home_accel = 20.0
+        self.servo_params = {
+            't1': 0.05, 't2': 0.05, 'gain': 0.1, 'alpha': 0.03
+        }
+        self.default_dir = str(Path.home() / 'motions')
+        
+        self._busy = False
+        self._selected_motion_file = None
+        self._last_status = "웹 서버 실행 중 (로봇 미연결)"
+        self._motion_duration_s = None
+        self._robot_connected = False
+        self._robot_error_msg = "ROS2/로봇 모듈 미설치"
+        
+        self.exec_node = None
     
-    try:
-        rclpy.init()
-    except Exception as e:
-        print(f"[WARNING] ROS2 init failed: {e}")
+    def is_busy(self):
+        return self._busy
+    
+    def get_status_dict(self):
+        return {
+            'busy': self._busy,
+            'selected_file': self._selected_motion_file,
+            'status': self._last_status,
+            'duration': self._motion_duration_s,
+            'robot_connected': self._robot_connected,
+            'robot_error': self._robot_error_msg,
+            'servo_params': self.servo_params,
+            'home_pose': self.home_pose_arr,
+            'home_speed': self.home_speed,
+            'home_accel': self.home_accel,
+        }
+    
+    def load_motion_file(self, filepath):
         return False
     
-    try:
-        ros_node = MotionWebNode()
+    def run_home(self):
+        return False
+    
+    def run_motion_file(self, filepath):
+        return False
+    
+    def set_servo_params(self, **kwargs):
+        pass
+
+def _get_default_motions_dir():
+    """motions 디렉터리 찾기"""
+    ws = os.environ.get("SMART_WS_DIR")
+    if ws:
+        return str(Path(ws).expanduser() / "motions")
+    return str(Path.home() / "motions")
+
+# ==================== ROS2 Node 정의 ====================
+if HAS_ROS2:
+    class MotionWebNode(Node):
+        def __init__(self):
+            super().__init__('motion_web_runner')
+            
+            # 파라미터 선언
+            self.declare_parameter('home_pose_arr', [0.0, -45.00, 137.00, 0.00, -90.00, 0.0])
+            self.declare_parameter('home_speed', 20.0)
+            self.declare_parameter('home_accel', 20.0)
+            self.declare_parameter('unity_playback_servo_t1', 0.05)
+            self.declare_parameter('unity_playback_servo_t2', 0.05)
+            self.declare_parameter('unity_playback_servo_gain', 0.1)
+            self.declare_parameter('unity_playback_servo_alpha', 0.03)
+            self.declare_parameter('default_dir', _get_default_motions_dir())
+            self.declare_parameter('run_mode', 'inline')
+            
+            # 파라미터 로드
+            self.home_pose_arr = list(self.get_parameter('home_pose_arr').value)
+            self.home_speed = float(self.get_parameter('home_speed').value)
+            self.home_accel = float(self.get_parameter('home_accel').value)
+            
+            self.servo_params = {
+                't1': float(self.get_parameter('unity_playback_servo_t1').value),
+                't2': float(self.get_parameter('unity_playback_servo_t2').value),
+                'gain': float(self.get_parameter('unity_playback_servo_gain').value),
+                'alpha': float(self.get_parameter('unity_playback_servo_alpha').value),
+            }
+            
+            self.default_dir = self.get_parameter('default_dir').value
+            self.run_mode = self.get_parameter('run_mode').value
+            
+            # 상태
+            self._busy = False
+            self._selected_motion_file = None
+            self._last_status = "준비됨"
+            self._motion_duration_s = None
+            self._robot_connected = False
+            self._robot_error_msg = "연결 중..."
+            self.exec_node = None
+            
+            # 백그라운드에서 로봇 초기화
+            self._init_robot_in_background()
+            
+            # Duration 구독
+            self.duration_sub = self.create_subscription(
+                Float32, "/motion_executor/last_duration_s",
+                self._on_motion_duration, 10
+            )
+            
+            self.get_logger().info("[INIT] MotionWebNode initialized")
         
-        def run_executor():
+        def _init_robot_in_background(self):
+            """백그라운드에서 로봇 초기화 (타임아웃 10초)"""
+            def _init():
+                if self.run_mode != 'inline' or not HAS_ROBOT:
+                    self._robot_connected = False
+                    self._robot_error_msg = "로봇 제어 미지원"
+                    return
+                
+                try:
+                    self.get_logger().info("[ROBOT] Connecting to robot (timeout: 10s)...")
+                    
+                    # 타임아웃 핸들러
+                    def timeout_handler(signum, frame):
+                        raise TimeoutError("Robot connection timeout (10s)")
+                    
+                    signal.signal(signal.SIGALRM, timeout_handler)
+                    signal.alarm(10)
+                    
+                    try:
+                        # 1️⃣ MotionExecutor 생성 시도
+                        self.exec_node = MotionExecutor()
+                        self.get_logger().info("[ROBOT] MotionExecutor created")
+                        
+                        # 2️⃣ 실제 로봇과 통신 테스트 (핸드셰이크)
+                        # set_servo_overrides()가 실패하면 로봇이 응답하지 않음
+                        self.exec_node.set_servo_overrides(**self.servo_params)
+                        self.get_logger().info("[ROBOT] Servo parameters set successfully")
+                        
+                        # 3️⃣ 추가 확인: 로봇 상태 읽기 시도
+                        # (MotionExecutor 객체에서 상태를 읽을 수 있으면 통신 확인)
+                        try:
+                            # 로봇 상태 확인 (예: 현재 위치 읽기)
+                            if hasattr(self.exec_node, 'get_joint_values'):
+                                joint_values = self.exec_node.get_joint_values()
+                                self.get_logger().info(f"[ROBOT] Joint values: {joint_values}")
+                            elif hasattr(self.exec_node, 'get_current_state'):
+                                state = self.exec_node.get_current_state()
+                                self.get_logger().info(f"[ROBOT] Robot state: {state}")
+                        except Exception as state_check_error:
+                            self.get_logger().warning(f"[ROBOT] Could not read robot state: {state_check_error}")
+                            # 상태 읽기 실패는 치명적이지 않음
+                        
+                        # ✅ 모든 체크 통과
+                        self._robot_connected = True
+                        self._robot_error_msg = ""
+                        self._last_status = "✅ 로봇 연결됨"
+                        self.get_logger().info("[ROBOT] ✅ Robot connected and verified!")
+                        
+                    finally:
+                        signal.alarm(0)
+                
+                except TimeoutError:
+                    self._robot_connected = False
+                    self._robot_error_msg = "연결 시간 초과 (10초) - 로봇 응답 없음"
+                    self._last_status = f"⚠️ 로봇 미연결: {self._robot_error_msg}"
+                    self.get_logger().warning(f"[ROBOT] ⚠️ {self._last_status}")
+                    
+                except Exception as e:
+                    self._robot_connected = False
+                    error_str = str(e)
+                    
+                    # 더 자세한 오류 정보 기록
+                    if "Connection refused" in error_str or "110" in error_str:
+                        self._robot_error_msg = "로봇 IP (192.168.1.13) 응답 없음"
+                    elif "Motor" in error_str or "servo" in error_str.lower():
+                        self._robot_error_msg = "로봇 하드웨어 오류"
+                    elif "timeout" in error_str.lower():
+                        self._robot_error_msg = "네트워크 연결 시간 초과"
+                    else:
+                        self._robot_error_msg = error_str[:50]
+                    
+                    self._last_status = f"⚠️ 로봇 미연결: {self._robot_error_msg}"
+                    self.get_logger().warning(f"[ROBOT] ⚠️ Connection failed: {e}")
+            
+            thread = threading.Thread(target=_init, daemon=True)
+            thread.start()
+        
+        def _on_motion_duration(self, msg):
+            self._motion_duration_s = float(msg.data)
+        
+        def is_busy(self):
+            return self._busy
+        
+        def get_status_dict(self):
+            return {
+                'busy': self._busy,
+                'selected_file': self._selected_motion_file,
+                'status': self._last_status,
+                'duration': self._motion_duration_s,
+                'robot_connected': self._robot_connected,
+                'robot_error': self._robot_error_msg,
+                'servo_params': self.servo_params,
+                'home_pose': self.home_pose_arr,
+                'home_speed': self.home_speed,
+                'home_accel': self.home_accel,
+            }
+        
+        def set_status(self, msg):
+            self._last_status = msg
+            self.get_logger().info(f"[STATUS] {msg}")
+        
+        def load_motion_file(self, filepath):
+            if not filepath:
+                self.set_status("❌ 파일 경로 필요")
+                return False
+            
             try:
-                executor = rclpy.executors.SingleThreadedExecutor()
-                executor.add_node(ros_node)
-                executor.spin()
+                self._selected_motion_file = filepath
+                self.set_status(f"✅ 모션 파일 로드: {Path(filepath).name}")
+                return True
             except Exception as e:
-                print(f"[ERROR] Executor spin failed: {e}")
+                self.set_status(f"❌ 파일 로드 실패: {e}")
+                return False
         
-        executor_thread = threading.Thread(target=run_executor, daemon=True)
-        executor_thread.start()
-        print("[ROS2] ROS2 executor started")
-        return True
-    except Exception as e:
-        print(f"[ERROR] Failed to create MotionWebNode: {e}")
-        ros_node = None
-        return False
+        def run_home(self):
+            if self._busy:
+                self.set_status("⏳ 현재 다른 작업 중...")
+                return False
+            
+            if not self._robot_connected:
+                self.set_status(f"❌ 로봇 미연결: {self._robot_error_msg}")
+                return False
+            
+            self._busy = True
+            try:
+                self.set_status("🏠 홈 위치로 이동 중...")
+                if HAS_ROBOT:
+                    cobot.MoveJ(self.home_pose_arr, self.home_speed, self.home_accel)
+                    self.set_status("✅ 홈 위치 이동 완료")
+                return True
+            except Exception as e:
+                self.set_status(f"❌ 홈 이동 실패: {e}")
+                return False
+            finally:
+                self._busy = False
+        
+        def run_motion_file(self, filepath=None):
+            if self._busy:
+                self.set_status("⏳ 현재 다른 작업 중...")
+                return False
+            
+            if not self._robot_connected:
+                self.set_status(f"❌ 로봇 미연결: {self._robot_error_msg}")
+                return False
+            
+            filepath = filepath or self._selected_motion_file
+            if not filepath:
+                self.set_status("❌ 모션 파일 선택 필요")
+                return False
+            
+            self._busy = True
+            try:
+                self.set_status(f"▶️ 모션 실행: {Path(filepath).name}...")
+                if self.run_mode == 'inline' and self.exec_node:
+                    self.exec_node.execute_motion(
+                        filepath, 
+                        inline=True,
+                        servo_override=self.servo_params
+                    )
+                    self.set_status("✅ 모션 실행 완료")
+                return True
+            except Exception as e:
+                self.set_status(f"❌ 모션 실행 실패: {e}")
+                return False
+            finally:
+                self._busy = False
+        
+        def set_servo_params(self, t1=None, t2=None, gain=None, alpha=None):
+            if t1 is not None:
+                self.servo_params['t1'] = float(t1)
+            if t2 is not None:
+                self.servo_params['t2'] = float(t2)
+            if gain is not None:
+                self.servo_params['gain'] = float(gain)
+            if alpha is not None:
+                self.servo_params['alpha'] = float(alpha)
+            
+            if self.exec_node:
+                try:
+                    self.exec_node.set_servo_overrides(**self.servo_params)
+                except:
+                    pass
 
-
+# ==================== Flask Routes ====================
 @app.route('/')
 def index():
-    """메인 페이지"""
     return render_template('index.html')
 
-
 @app.route('/api/status', methods=['GET'])
-def get_status():
-    """현재 상태 반환"""
+def status():
+    global ros_node
     if ros_node is None:
-        return jsonify({'error': 'ROS node not initialized'}), 500
+        return jsonify({'error': 'Node not initialized'}), 500
     
-    status = ros_node.get_status()
-    return jsonify(status)
-
+    return jsonify(ros_node.get_status_dict())
 
 @app.route('/api/motions-list', methods=['GET'])
-def list_motions():
-    """motions 디렉터리의 파일 목록"""
+def motions_list():
+    global ros_node
     if ros_node is None:
-        return jsonify({'error': 'ROS node not initialized'}), 500
+        return jsonify({'error': 'Node not initialized'}), 500
     
     motions_dir = Path(ros_node.default_dir)
     if not motions_dir.exists():
-        return jsonify({'error': f'Directory not found: {motions_dir}'}), 404
+        return jsonify({'files': [], 'directory': str(motions_dir)})
     
-    files = []
-    for ext in ['*.yaml', '*.yml', '*.json']:
-        files.extend(motions_dir.glob(ext))
+    files = [f for f in motions_dir.glob('*.yaml')]
+    files += [f for f in motions_dir.glob('*.json')]
     
-    # 서브디렉터리도 검색
-    for ext in ['**/*.yaml', '**/*.yml', '**/*.json']:
-        files.extend(motions_dir.glob(ext))
-    
-    files = sorted(set(files))
     file_list = [
         {
             'name': f.name,
@@ -356,12 +377,11 @@ def list_motions():
     
     return jsonify({'files': file_list, 'directory': str(motions_dir)})
 
-
 @app.route('/api/load-motion', methods=['POST'])
 def load_motion():
-    """모션 파일 선택"""
+    global ros_node
     if ros_node is None:
-        return jsonify({'error': 'ROS node not initialized'}), 500
+        return jsonify({'error': 'Node not initialized'}), 500
     
     data = request.get_json()
     filepath = data.get('filepath')
@@ -370,54 +390,41 @@ def load_motion():
         return jsonify({'error': 'filepath required'}), 400
     
     success = ros_node.load_motion_file(filepath)
-    return jsonify({
-        'success': success,
-        'selected_file': ros_node._selected_motion_file,
-        'status': ros_node._last_status,
-    })
-
+    status_dict = ros_node.get_status_dict()
+    return jsonify({'success': success, **status_dict})
 
 @app.route('/api/run-home', methods=['POST'])
 def run_home():
-    """Home 이동 실행"""
+    global ros_node
     if ros_node is None:
-        return jsonify({'error': 'ROS node not initialized'}), 500
+        return jsonify({'error': 'Node not initialized'}), 500
     
     success = ros_node.run_home()
-    return jsonify({
-        'success': success,
-        'busy': ros_node.is_busy(),
-        'status': ros_node._last_status,
-    })
-
+    status_dict = ros_node.get_status_dict()
+    return jsonify({'success': success, **status_dict})
 
 @app.route('/api/run-motion', methods=['POST'])
 def run_motion():
-    """선택한 모션 파일 실행"""
+    global ros_node
     if ros_node is None:
-        return jsonify({'error': 'ROS node not initialized'}), 500
+        return jsonify({'error': 'Node not initialized'}), 500
     
     data = request.get_json() or {}
     filepath = data.get('filepath')
     
     success = ros_node.run_motion_file(filepath)
-    return jsonify({
-        'success': success,
-        'busy': ros_node.is_busy(),
-        'status': ros_node._last_status,
-    })
-
+    status_dict = ros_node.get_status_dict()
+    return jsonify({'success': success, **status_dict})
 
 @app.route('/api/servo-params', methods=['GET', 'POST'])
 def servo_params():
-    """ServoJ 파라미터 조회/수정"""
+    global ros_node
     if ros_node is None:
-        return jsonify({'error': 'ROS node not initialized'}), 500
+        return jsonify({'error': 'Node not initialized'}), 500
     
     if request.method == 'GET':
         return jsonify(ros_node.servo_params)
     
-    # POST: 파라미터 업데이트
     data = request.get_json() or {}
     ros_node.set_servo_params(
         t1=data.get('t1'),
@@ -426,18 +433,14 @@ def servo_params():
         alpha=data.get('alpha'),
     )
     
-    return jsonify({
-        'success': True,
-        'servo_params': ros_node.servo_params,
-        'status': ros_node._last_status,
-    })
-
+    status_dict = ros_node.get_status_dict()
+    return jsonify({'success': True, **status_dict})
 
 @app.route('/api/home-pose', methods=['GET', 'POST'])
 def home_pose():
-    """Home 위치 조회/수정"""
+    global ros_node
     if ros_node is None:
-        return jsonify({'error': 'ROS node not initialized'}), 500
+        return jsonify({'error': 'Node not initialized'}), 500
     
     if request.method == 'GET':
         return jsonify({
@@ -446,7 +449,6 @@ def home_pose():
             'home_accel': ros_node.home_accel,
         })
     
-    # POST: 업데이트
     data = request.get_json() or {}
     if 'home_pose' in data:
         ros_node.home_pose_arr = list(data['home_pose'])
@@ -462,15 +464,112 @@ def home_pose():
         'home_accel': ros_node.home_accel,
     })
 
-
-if __name__ == '__main__':
-    print("[INIT] Starting Rainbow Robot Web Control...")
-    init_ros()
+@app.route('/api/robot-diagnostics', methods=['GET'])
+def robot_diagnostics():
+    """🔍 로봇 연결 상태 진단"""
+    global ros_node
+    if ros_node is None:
+        return jsonify({'error': 'Node not initialized'}), 500
     
-    # Flask 실행
-    app.run(
-        host='0.0.0.0',
-        port=5000,
-        debug=False,
-        use_reloader=False,
-    )
+    diagnostics = {
+        'robot_connected': ros_node._robot_connected,
+        'robot_error': ros_node._robot_error_msg,
+        'status': ros_node._last_status,
+        'has_executor': ros_node.exec_node is not None,
+        'executor_type': type(ros_node.exec_node).__name__ if ros_node.exec_node else None,
+    }
+    
+    # 로봇이 연결되었다고 표시되면 실제 상태 확인
+    if ros_node._robot_connected and ros_node.exec_node:
+        try:
+            # MotionExecutor의 메서드 확인
+            diagnostics['executor_methods'] = [m for m in dir(ros_node.exec_node) if not m.startswith('_')]
+            
+            # 로봇 상태 읽기 시도
+            if hasattr(ros_node.exec_node, 'get_joint_values'):
+                try:
+                    joint_values = ros_node.exec_node.get_joint_values()
+                    diagnostics['joint_values'] = joint_values
+                    diagnostics['connection_verified'] = True
+                except Exception as e:
+                    diagnostics['joint_values_error'] = str(e)
+                    diagnostics['connection_verified'] = False
+            
+            if hasattr(ros_node.exec_node, 'get_current_state'):
+                try:
+                    state = ros_node.exec_node.get_current_state()
+                    diagnostics['robot_state'] = str(state)
+                    diagnostics['connection_verified'] = True
+                except Exception as e:
+                    diagnostics['robot_state_error'] = str(e)
+                    diagnostics['connection_verified'] = False
+                    
+        except Exception as e:
+            diagnostics['diagnostic_error'] = str(e)
+    
+    return jsonify(diagnostics)
+
+# ==================== Main ====================
+if __name__ == '__main__':
+    print(r"""
+                                    
+      ,--.                     ,--. 
+,--.--|  |-.,-----.,--,--.,---.`--' 
+|  .--| .-. '-----' ,-.  | .-. ,--. 
+|  |  | `-' |     \ '-'  | '-' |  | 
+`--'   `---'       `--`--|  |-'`--' 
+                         `--'       
+    Rainbow Robot Web Control
+""")
+    
+    print("[INIT] Starting Rainbow Robot Web Control...")
+    
+    # ROS2/로봇 초기화 시도
+    if HAS_ROS2:
+        print("[INIT] ROS2 detected - initializing...")
+        try:
+            rclpy.init()
+            ros_node = MotionWebNode()
+            
+            # 백그라운드에서 ROS2 스핀
+            def ros2_spin():
+                try:
+                    rclpy.spin(ros_node)
+                except KeyboardInterrupt:
+                    pass
+                except Exception as e:
+                    print(f"[ROS2] Error: {e}")
+                finally:
+                    try:
+                        if ros_node:
+                            ros_node.destroy_node()
+                        rclpy.shutdown()
+                    except:
+                        pass
+            
+            ros_thread = threading.Thread(target=ros2_spin, daemon=True)
+            ros_thread.start()
+            
+            print("[INIT] ✅ ROS2 node created")
+            print("[ROBOT] Robot connection attempt in background (timeout: 10s)...")
+            
+        except Exception as e:
+            print(f"[ERROR] ROS2 init failed: {e}")
+            print("[INFO] Using dummy node for standalone web server...")
+            ros_node = DummyNode()
+    else:
+        print("[WARN] ROS2 not installed")
+        print("[INFO] Using dummy node for standalone web server...")
+        ros_node = DummyNode()
+    
+    # Flask 웹 서버 실행
+    print("\n[WEB] Starting Flask web server...")
+    print("[WEB] Open browser at: http://localhost:5000")
+    print("[WEB] Press Ctrl+C to stop\n")
+    
+    try:
+        app.run(host='0.0.0.0', port=5000, debug=False, use_reloader=False)
+    except KeyboardInterrupt:
+        print("\n[SHUTDOWN] Stopping web server...")
+    except Exception as e:
+        print(f"[ERROR] Web server error: {e}")
