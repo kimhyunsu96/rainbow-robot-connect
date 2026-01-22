@@ -99,6 +99,8 @@ class MotionWebNode(Node):
         self._selected_motion_file = None
         self._last_status = ""
         self._motion_duration_s = None
+        self._robot_connected = False  # 로봇 연결 상태
+        self._robot_error_msg = ""  # 로봇 연결 오류 메시지
         
         # Inline 모드용 MotionExecutor
         self.exec_node = None
@@ -106,9 +108,17 @@ class MotionWebNode(Node):
             try:
                 self.exec_node = MotionExecutor()
                 self.exec_node.set_servo_overrides(**self.servo_params)
+                self._robot_connected = True
                 self.get_logger().info("[INIT] MotionExecutor initialized")
+                self._last_status = "✅ 로봇 연결됨"
             except Exception as e:
+                self._robot_connected = False
+                self._robot_error_msg = str(e)
                 self.get_logger().warning(f"[INIT] MotionExecutor init failed: {e}")
+                self._last_status = f"⚠️ 로봇 연결 실패: {e}"
+        else:
+            self._robot_error_msg = "Process 모드에서는 로봇 제어 미지원"
+            self._last_status = f"⚠️ {self._robot_error_msg}"
         
         # Duration 구독
         self.duration_sub = self.create_subscription(
@@ -130,6 +140,8 @@ class MotionWebNode(Node):
             'last_status': self._last_status,
             'servo_params': self.servo_params,
             'home_pose': self.home_pose_arr,
+            'robot_connected': self._robot_connected,  # 🆕 로봇 연결 상태
+            'robot_error': self._robot_error_msg,      # 🆕 로봇 오류 메시지
         }
         return status
     
@@ -148,6 +160,10 @@ class MotionWebNode(Node):
             self.set_status("실행 중 → 무시")
             return False
         
+        if not self._robot_connected:
+            self.set_status(f"❌ 로봇이 연결되지 않았습니다: {self._robot_error_msg}")
+            return False
+        
         self._busy = True
         try:
             def _do():
@@ -156,14 +172,14 @@ class MotionWebNode(Node):
                     sp = self.home_speed
                     ac = self.home_accel
                     
-                    self.set_status(f"홈 이동: {q} (speed={sp}, accel={ac})")
+                    self.set_status(f"🏠 홈 이동 중: {q} (speed={sp}, accel={ac})")
                     
                     # cobot.MoveJ 호출
                     cobot.MoveJ(q[0], q[1], q[2], q[3], q[4], q[5], sp, ac)
-                    self.set_status("홈 이동 완료")
+                    self.set_status("✅ 홈 이동 완료")
                     
                 except Exception as e:
-                    self.set_status(f"홈 이동 실패: {e}")
+                    self.set_status(f"❌ 홈 이동 실패: {e}")
                     self.get_logger().error(f"[HOME] failed: {e}")
                 finally:
                     self._busy = False
@@ -172,7 +188,7 @@ class MotionWebNode(Node):
             return True
         except Exception as e:
             self._busy = False
-            self.set_status(f"홈 이동 시작 실패: {e}")
+            self.set_status(f"❌ 홈 이동 시작 실패: {e}")
             return False
     
     def load_motion_file(self, filepath: str) -> bool:
@@ -198,7 +214,11 @@ class MotionWebNode(Node):
         
         motion_file = filepath or self._selected_motion_file
         if not motion_file or not os.path.exists(motion_file):
-            self.set_status("모션 파일이 선택되지 않았습니다")
+            self.set_status("❌ 모션 파일이 선택되지 않았습니다")
+            return False
+        
+        if not self._robot_connected:
+            self.set_status(f"❌ 로봇이 연결되지 않았습니다: {self._robot_error_msg}")
             return False
         
         self._busy = True
@@ -207,14 +227,15 @@ class MotionWebNode(Node):
                 try:
                     if self.exec_node is not None:
                         # Inline 모드: MotionExecutor 사용
+                        self.set_status(f"▶️ 모션 실행 중: {os.path.basename(motion_file)}")
                         self.exec_node.load_motion_from_file(motion_file, False)
-                        self.set_status("모션 실행 완료 (inline)")
+                        self.set_status("✅ 모션 실행 완료 (inline)")
                     else:
                         # Process 모드: 외부 실행 (구현 필요)
-                        self.set_status("Process 모드는 현재 미지원")
+                        self.set_status("⚠️ Process 모드는 현재 미지원")
                     
                 except Exception as e:
-                    self.set_status(f"모션 실행 실패: {e}")
+                    self.set_status(f"❌ 모션 실행 실패: {e}")
                     self.get_logger().error(f"[MOTION] failed: {e}")
                 finally:
                     self._busy = False
@@ -223,7 +244,7 @@ class MotionWebNode(Node):
             return True
         except Exception as e:
             self._busy = False
-            self.set_status(f"모션 실행 시작 실패: {e}")
+            self.set_status(f"❌ 모션 실행 시작 실패: {e}")
             return False
     
     def set_servo_params(self, t1=None, t2=None, gain=None, alpha=None):
@@ -260,16 +281,31 @@ def init_ros():
     """ROS2 초기화"""
     global ros_node, executor_thread
     
-    rclpy.init()
-    ros_node = MotionWebNode()
+    try:
+        rclpy.init()
+    except Exception as e:
+        print(f"[WARNING] ROS2 init failed: {e}")
+        return False
     
-    def run_executor():
-        executor = rclpy.executors.SingleThreadedExecutor()
-        executor.add_node(ros_node)
-        executor.spin()
-    
-    executor_thread = threading.Thread(target=run_executor, daemon=True)
-    executor_thread.start()
+    try:
+        ros_node = MotionWebNode()
+        
+        def run_executor():
+            try:
+                executor = rclpy.executors.SingleThreadedExecutor()
+                executor.add_node(ros_node)
+                executor.spin()
+            except Exception as e:
+                print(f"[ERROR] Executor spin failed: {e}")
+        
+        executor_thread = threading.Thread(target=run_executor, daemon=True)
+        executor_thread.start()
+        print("[ROS2] ROS2 executor started")
+        return True
+    except Exception as e:
+        print(f"[ERROR] Failed to create MotionWebNode: {e}")
+        ros_node = None
+        return False
 
 
 @app.route('/')

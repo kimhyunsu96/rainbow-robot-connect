@@ -57,6 +57,42 @@ main {
     gap: 25px;
 }
 
+/* 알림 박스 */
+.alert {
+    padding: 20px;
+    border-radius: var(--border-radius);
+    margin-bottom: 20px;
+    border-left: 5px solid;
+}
+
+.alert h3 {
+    margin: 0 0 10px 0;
+}
+
+.alert-info {
+    background-color: #e3f2fd;
+    border-left-color: var(--primary-color);
+    color: var(--primary-color);
+}
+
+.alert-warning {
+    background-color: #fff3e0;
+    border-left-color: var(--secondary-color);
+    color: var(--secondary-color);
+}
+
+.alert-danger {
+    background-color: #ffebee;
+    border-left-color: var(--danger-color);
+    color: var(--danger-color);
+}
+
+.alert-success {
+    background-color: #e8f5e9;
+    border-left-color: var(--success-color);
+    color: var(--success-color);
+}
+
 .panel {
     background: white;
     padding: 25px;

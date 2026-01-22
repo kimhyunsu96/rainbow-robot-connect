@@ -14,10 +14,20 @@
         </header>
 
         <main>
+            <!-- 로봇 연결 상태 알림 (상단) -->
+            <section id="robot-status-alert" class="alert alert-info" style="display: none;">
+                <h3>🤖 로봇 연결 상태</h3>
+                <div id="robot-status-content"></div>
+            </section>
+
             <!-- 상태 표시 -->
             <section class="panel">
                 <h2>📊 시스템 상태</h2>
                 <div class="status-box">
+                    <div class="status-item">
+                        <span class="label">🤖 로봇:</span>
+                        <span id="robot-status" class="value">확인 중...</span>
+                    </div>
                     <div class="status-item">
                         <span class="label">상태:</span>
                         <span id="status-text" class="value">로딩 중...</span>

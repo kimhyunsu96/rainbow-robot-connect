@@ -55,6 +55,32 @@ async function apiCall(endpoint, method = 'GET', data = null) {
 async function updateStatus() {
     try {
         const status = await apiCall('/status');
+        
+        // 로봇 연결 상태 표시
+        const robotConnected = status.robot_connected;
+        const robotStatusElement = document.getElementById('robot-status');
+        const alertBox = document.getElementById('robot-status-alert');
+        const alertContent = document.getElementById('robot-status-content');
+        
+        if (robotConnected) {
+            robotStatusElement.textContent = '✅ 로봇 연결됨 (192.168.1.13)';
+            robotStatusElement.style.color = 'var(--success-color)';
+            alertBox.style.display = 'none';
+        } else {
+            robotStatusElement.textContent = `⚠️ 로봇 미연결`;
+            robotStatusElement.style.color = 'var(--danger-color)';
+            alertBox.classList.remove('alert-info', 'alert-success');
+            alertBox.classList.add('alert-warning');
+            alertBox.style.display = 'block';
+            alertContent.innerHTML = `
+                <p><strong>로봇이 연결되지 않았습니다</strong></p>
+                <p>오류: ${status.robot_error || '알 수 없는 오류'}</p>
+                <p style="margin-bottom: 0;">
+                    💡 로봇 모듈을 확인하고 192.168.1.13로 접근 가능한지 확인하세요.
+                </p>
+            `;
+        }
+        
         document.getElementById('status-text').textContent = status.last_status || '준비됨';
         document.getElementById('busy-text').textContent = status.busy ? '예' : '아니오';
         document.getElementById('selected-file').textContent = 
@@ -130,19 +156,26 @@ async function selectMotionFile(filepath, filename) {
 // Home 이동 실행
 async function runHome() {
     try {
+        // 로봇 연결 상태 확인
+        const status = await apiCall('/status');
+        if (!status.robot_connected) {
+            showToast(`❌ 로봇이 연결되지 않았습니다: ${status.robot_error}`, 'error');
+            return;
+        }
+        
         log('Home 이동 시작...');
         const result = await apiCall('/run-home', 'POST');
         
         if (result.success) {
             log('Home 이동 명령 전송됨', 'success');
-            showToast('Home 이동 시작', 'success');
+            showToast('✅ Home 이동 시작', 'success');
         } else {
-            showToast('Home 이동 실패', 'error');
+            showToast('❌ Home 이동 실패', 'error');
         }
         
         updateStatus();
     } catch (error) {
-        showToast('Home 이동 오류', 'error');
+        showToast('❌ Home 이동 오류', 'error');
     }
 }
 
@@ -214,6 +247,13 @@ async function updateServoParams() {
 // 모션 실행
 async function runMotion() {
     try {
+        // 로봇 연결 상태 확인
+        const status = await apiCall('/status');
+        if (!status.robot_connected) {
+            showToast(`❌ 로봇이 연결되지 않았습니다: ${status.robot_error}`, 'error');
+            return;
+        }
+        
         const selectedFile = document.getElementById('motion-selected-display').textContent;
         if (selectedFile === '없음') {
             showToast('먼저 모션 파일을 선택하세요', 'error');
@@ -225,14 +265,14 @@ async function runMotion() {
         
         if (result.success) {
             log('모션 실행 명령 전송됨', 'success');
-            showToast('모션 실행 시작', 'success');
+            showToast('✅ 모션 실행 시작', 'success');
         } else {
-            showToast('모션 실행 실패', 'error');
+            showToast('❌ 모션 실행 실패', 'error');
         }
         
         updateStatus();
     } catch (error) {
-        showToast('모션 실행 오류', 'error');
+        showToast('❌ 모션 실행 오류', 'error');
     }
 }
 
