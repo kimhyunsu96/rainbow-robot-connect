@@ -59,36 +59,25 @@ async function updateStatus() {
         // 로봇 연결 상태 표시
         const robotConnected = status.robot_connected;
         const robotStatusElement = document.getElementById('robot-status');
-        const alertBox = document.getElementById('robot-status-alert');
-        const alertContent = document.getElementById('robot-status-content');
         
         if (robotConnected) {
             robotStatusElement.textContent = '✅ 로봇 연결됨 (192.168.1.13)';
             robotStatusElement.style.color = 'var(--success-color)';
-            alertBox.style.display = 'none';
         } else {
             robotStatusElement.textContent = `⚠️ 로봇 미연결`;
             robotStatusElement.style.color = 'var(--danger-color)';
-            alertBox.classList.remove('alert-info', 'alert-success');
-            alertBox.classList.add('alert-warning');
-            alertBox.style.display = 'block';
-            alertContent.innerHTML = `
-                <p><strong>로봇이 연결되지 않았습니다</strong></p>
-                <p>오류: ${status.robot_error || '알 수 없는 오류'}</p>
-                <p style="margin-bottom: 0;">
-                    💡 로봇 모듈을 확인하고 192.168.1.13로 접근 가능한지 확인하세요.
-                </p>
-            `;
         }
         
-        document.getElementById('status-text').textContent = status.last_status || '준비됨';
         document.getElementById('busy-text').textContent = status.busy ? '예' : '아니오';
         document.getElementById('selected-file').textContent = 
             status.selected_file ? status.selected_file.split('/').pop() : '없음';
         
-        // ServoJ 파라미터 표시
-        const servoDisplay = document.getElementById('servo-display');
-        servoDisplay.textContent = JSON.stringify(status.servo_params, null, 2);
+        // ServoJ 파라미터 표시 (제목에 현재 값 표시)
+        const servojTitle = document.getElementById('servoj-title');
+        if (servojTitle && status.servo_params) {
+            const params = status.servo_params;
+            servojTitle.textContent = `ServoJ 파라미터 (t1: ${params.t1}, t2: ${params.t2}, Gain: ${params.gain}, Alpha: ${params.alpha})`;
+        }
         
     } catch (error) {
         log('상태 업데이트 실패', 'error');
@@ -276,6 +265,53 @@ async function runMotion() {
     }
 }
 
+// 로봇 연결
+async function connectRobot() {
+    try {
+        log('로봇 연결 시도 중...');
+        const result = await apiCall('/connect-robot', 'POST');
+        
+        if (result.success) {
+            log('로봇 연결 시도 성공', 'success');
+            showToast('🔗 로봇 연결 시도 중...', 'info');
+        } else {
+            showToast('❌ 로봇 연결 실패', 'error');
+        }
+        
+        updateStatus();
+    } catch (error) {
+        showToast('❌ 로봇 연결 오류', 'error');
+    }
+}
+
+// MoveJ 이동
+async function runMoveJ() {
+    try {
+        const jointsInput = document.getElementById('joints-input').value;
+        const speed = parseFloat(document.getElementById('movej-speed').value);
+        const accel = parseFloat(document.getElementById('movej-accel').value);
+        
+        log(`MoveJ 이동: ${jointsInput} (속도: ${speed}, 가속도: ${accel})`);
+        
+        const result = await apiCall('/run-movej', 'POST', {
+            joints: jointsInput,
+            speed: speed,
+            accel: accel
+        });
+        
+        if (result.success) {
+            log('MoveJ 이동 명령 전송됨', 'success');
+            showToast('✅ MoveJ 이동 시작', 'success');
+        } else {
+            showToast('❌ MoveJ 이동 실패', 'error');
+        }
+        
+        updateStatus();
+    } catch (error) {
+        showToast('❌ MoveJ 이동 오류', 'error');
+    }
+}
+
 // 페이지 초기화
 async function initializePage() {
     log('Rainbow Robot 웹 제어기 시작...', 'success');
@@ -289,8 +325,9 @@ async function initializePage() {
     
     // 버튼 이벤트 바인딩
     document.getElementById('refresh-files-btn').addEventListener('click', loadMotionFiles);
+    document.getElementById('connect-robot-btn').addEventListener('click', connectRobot);
     document.getElementById('run-home-btn').addEventListener('click', runHome);
-    document.getElementById('set-home-pose-btn').addEventListener('click', setHomePose);
+    document.getElementById('run-movej-btn').addEventListener('click', runMoveJ);
     document.getElementById('update-servo-btn').addEventListener('click', updateServoParams);
     document.getElementById('run-motion-btn').addEventListener('click', runMotion);
     

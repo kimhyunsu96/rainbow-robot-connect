@@ -56,7 +56,7 @@ class DummyNode:
         self.servo_params = {
             't1': 0.05, 't2': 0.05, 'gain': 0.1, 'alpha': 0.03
         }
-        self.default_dir = str(Path.home() / 'motions')
+        self.default_dir = _get_default_motions_dir()
         
         self._busy = False
         self._selected_motion_file = None
@@ -98,9 +98,32 @@ class DummyNode:
 
 def _get_default_motions_dir():
     """motions 디렉터리 찾기"""
-    ws = os.environ.get("SMART_WS_DIR")
-    if ws:
-        return str(Path(ws).expanduser() / "motions")
+    # 현재 파일의 위치에서 RainbowRobot_ConnectTest/motions를 찾기
+    current_file = Path(__file__).resolve()
+    
+    # src/rb_web에서 시작해서 상위 디렉터리로 이동
+    rb_web_dir = current_file.parent
+    src_dir = rb_web_dir.parent
+    project_root = src_dir.parent
+    
+    # RainbowRobot_ConnectTest/motions 경로 확인
+    motions_dir = project_root / "RainbowRobot_ConnectTest" / "motions"
+    
+    if motions_dir.exists():
+        return str(motions_dir)
+    
+    # 대안 경로들 시도
+    alt_paths = [
+        Path.home() / "motions",
+        Path.cwd() / "motions",
+        project_root / "motions",
+    ]
+    
+    for path in alt_paths:
+        if path.exists():
+            return str(path)
+    
+    # 기본값
     return str(Path.home() / "motions")
 
 # ==================== ROS2 Node 정의 ====================
@@ -567,8 +590,24 @@ if __name__ == '__main__':
     print("[WEB] Open browser at: http://localhost:5000")
     print("[WEB] Press Ctrl+C to stop\n")
     
+    # 백그라운드에서 서버 실행
+    from werkzeug.serving import make_server
+    import threading
+    
+    def run_server():
+        try:
+            server = make_server('0.0.0.0', 5000, app, threaded=True)
+            server.serve_forever()
+        except Exception as e:
+            print(f"[WEB] Server error: {e}")
+    
+    server_thread = threading.Thread(target=run_server, daemon=True)
+    server_thread.start()
+    
     try:
-        app.run(host='0.0.0.0', port=5000, debug=False, use_reloader=False)
+        # 메인 스레드에서 대기
+        while True:
+            time.sleep(1)
     except KeyboardInterrupt:
         print("\n[SHUTDOWN] Stopping web server...")
     except Exception as e:

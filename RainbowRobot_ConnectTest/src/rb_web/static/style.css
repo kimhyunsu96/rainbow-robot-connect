@@ -26,35 +26,164 @@ body {
 }
 
 .container {
-    max-width: 1200px;
-    margin: 0 auto;
-    padding: 20px;
+    max-width: none;
+    width: 100vw;
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
 }
 
 header {
     text-align: center;
-    margin-bottom: 40px;
+    margin-bottom: 15px; /* 20px → 15px로 더 줄임 */
     background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
     color: white;
-    padding: 30px 20px;
+    padding: 8px 10px; /* 15px 10px → 8px 10px로 세로 길이 반으로 줄임 */
     border-radius: var(--border-radius);
     box-shadow: var(--shadow);
 }
 
 header h1 {
-    font-size: 2.5em;
-    margin-bottom: 10px;
+    font-size: 1.6em; /* 1.8em → 1.6em으로 더 줄임 */
+    margin-bottom: 0; /* 5px → 0으로 제거 */
 }
 
-header p {
-    font-size: 1.1em;
-    opacity: 0.9;
+/* header p 스타일 제거 (소제목 없앰) */
+
+/* 시스템 상태 바 */
+.system-status-bar {
+    background-color: white;
+    border-radius: var(--border-radius);
+    padding: 10px; /* 15px → 10px로 세로 패딩 줄임 */
+    margin-bottom: 15px; /* 20px → 15px로 마진도 조금 줄임 */
+    box-shadow: var(--shadow);
+    border: 1px solid var(--border-color);
+    position: relative;
+    left: 50%;
+    right: 50%;
+    width: 95vw; /* 100vw → 95vw로 가로 폭 조금 줄임 */
+    margin-left: -47.5vw; /* 중앙 정렬을 위한 계산 (95vw의 절반) */
+    margin-right: -47.5vw;
+}
+
+.system-status-bar .status-box {
+    display: flex;
+    gap: 40px; /* 20px → 40px로 간격 넓히기 */
+    align-items: center;
+    justify-content: space-between; /* 항목들 사이 공간을 균등하게 분배 */
+    flex-wrap: wrap; /* 필요시 줄바꿈 */
+}
+
+.system-status-bar .status-item {
+    display: flex;
+    align-items: center;
+    gap: 12px; /* 8px → 12px로 내부 간격 넓히기 */
+    min-width: 200px; /* 최소 너비 설정으로 가로 확장 */
+    flex: 1; /* 남은 공간을 균등하게 분배 */
+}
+
+.system-status-bar .label {
+    font-weight: bold;
+    color: var(--text-color);
+}
+
+.system-status-bar .value {
+    color: var(--primary-color);
+    font-weight: 500;
 }
 
 main {
     display: grid;
-    grid-template-columns: 1fr;
-    gap: 25px;
+    grid-template-columns: 4fr 3fr; /* 좌우 공간 효율적 사용을 위해 3fr 2fr → 4fr 3fr로 조정 */
+    gap: 20px;
+    align-items: start;
+    max-height: 80vh; /* 화면 높이의 80%로 제한 */
+}
+
+.left-column, .right-column {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+/* 왼쪽 열 섹션들 */
+.left-column .panel {
+    flex: 0 0 auto;
+}
+
+/* 오른쪽 열 - 로그와 ServoJ 파라미터 */
+.right-column .panel {
+    flex: 1 1 auto;
+}
+
+.right-column .log-box {
+    max-height: 300px; /* 로그 높이 제한 */
+    overflow-y: auto;
+}
+
+/* 컨테이너 높이 제한 */
+.container {
+    max-height: 90vh; /* 화면 높이의 90%로 제한 */
+    overflow-y: auto; /* 필요시 스크롤 */
+}
+
+/* 모션 탭 */
+.motion-tabs {
+    display: flex;
+    gap: 20px;
+    flex-wrap: wrap;
+}
+
+.tab-section {
+    flex: 1;
+    min-width: 250px;
+    background-color: white;
+    border-radius: var(--border-radius);
+    padding: 15px;
+    box-shadow: var(--shadow);
+    border: 1px solid var(--border-color);
+}
+
+.tab-section h3 {
+    margin-bottom: 15px;
+    color: var(--primary-color);
+    border-bottom: 2px solid var(--primary-color);
+    padding-bottom: 5px;
+}
+
+/* MoveJ 이동 패널 */
+.home-move-panel {
+    background-color: white;
+    border-radius: var(--border-radius);
+    padding: 20px;
+    box-shadow: var(--shadow);
+    border: 1px solid var(--border-color);
+}
+
+.movej-content {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr;
+    gap: 15px;
+    align-items: end;
+}
+
+.movej-content .param-group {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.movej-content .input-large {
+    width: 100%;
+}
+
+.movej-content .input-small {
+    width: 100%;
+}
+
+.movej-content .btn {
+    width: 100%;
+    padding: 12px;
 }
 
 /* 알림 박스 */
@@ -95,16 +224,18 @@ main {
 
 .panel {
     background: white;
-    padding: 25px;
+    padding: 15px; /* 25px → 15px로 줄임 */
     border-radius: var(--border-radius);
     box-shadow: var(--shadow);
+    height: fit-content; /* 높이를 내용에 맞춤 */
 }
 
 .panel h2 {
-    margin-bottom: 20px;
+    margin-bottom: 10px; /* 20px → 10px로 줄임 */
     color: var(--primary-color);
-    border-bottom: 3px solid var(--primary-color);
-    padding-bottom: 10px;
+    border-bottom: 2px solid var(--primary-color); /* 3px → 2px로 줄임 */
+    padding-bottom: 5px; /* 10px → 5px로 줄임 */
+    font-size: 1.1em; /* 제목 크기 조정 */
 }
 
 /* 상태 표시 */
@@ -134,7 +265,7 @@ main {
 
 /* 파일 목록 */
 .file-list {
-    max-height: 400px;
+    max-height: 300px; /* 400px → 300px로 세로 높이 줄임 */
     overflow-y: auto;
     border: 1px solid var(--border-color);
     border-radius: 4px;
@@ -371,16 +502,32 @@ main {
 /* 푸터 */
 footer {
     text-align: center;
-    margin-top: 40px;
-    padding: 20px;
+    margin-top: 15px; /* 40px → 15px로 줄임 */
+    padding: 10px; /* 20px → 10px로 줄임 */
     color: #999;
     border-top: 1px solid var(--border-color);
+    font-size: 0.8em; /* 폰트 크기 줄임 */
 }
 
 /* 반응형 디자인 */
 @media (max-width: 768px) {
+    .container {
+        padding: 5px;
+    }
+    
     header h1 {
-        font-size: 2em;
+        font-size: 1.4em; /* 1.5em → 1.4em으로 더 줄임 */
+    }
+
+    /* header p 스타일 제거 (모바일에서도) */
+
+    main {
+        grid-template-columns: 1fr; /* 모바일에서는 1열로 */
+        gap: 10px;
+    }
+
+    .left-column, .right-column {
+        gap: 10px;
     }
 
     .params-grid {
@@ -393,18 +540,25 @@ footer {
 
     .btn-large {
         width: 100%;
+        font-size: 0.9em;
     }
 
     .input-group {
         flex-direction: column;
     }
 
-    .input-large {
+    .input-large, .input-small {
         width: 100%;
+        font-size: 0.9em;
     }
 
-    .input-small {
-        width: 100%;
+    .panel {
+        padding: 10px;
+    }
+
+    .panel h2 {
+        font-size: 1em;
+        margin-bottom: 8px;
     }
 }
 
